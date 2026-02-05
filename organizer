@@ -1,1 +1,13 @@
 #!/usr/bin/env bash
+
+set -euo pipefail
+trap 'echo "Error on line $LINENO"' ERR
+
+for all in *; do
+  if [[ ! -f $all ]]; then
+    echo "No files are there"
+    exit 1
+  else
+    echo "$all"
+  fi
+done
