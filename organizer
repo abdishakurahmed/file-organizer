@@ -3,11 +3,87 @@
 set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
-for all in *; do
-  if [[ ! -f $all ]]; then
-    echo "No files are there"
-    exit 1
+ensure_dir_and_move() {
+  declare -n dir=$1
+  declare -n itemTobeMoved=$2
+  if [[ -d $dir ]]; then
+    mv "$itemTobeMoved" "$dir"
   else
-    echo "$all"
+    mkdir "$dir"
+    mv "$itemTobeMoved" "$dir"
   fi
+}
+
+for extension in *; do
+  if [[ -d $extension ]]; then
+    continue
+  fi
+  case "${extension}" in
+  # Documents
+  *.pdf | *.doc | *.docx | *.txt | *.rtf | *.odt | *.md)
+    category="Documents"
+    ensure_dir_and_move category extension
+    echo "these are $category"
+
+    ;;
+  *.xls | *.xlsx | *.csv | *.ods)
+    category="Spreadsheets"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+  *.ppt | *.pptx | *.odp)
+    category="Presentations"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Images
+  *.jpg | *.jpeg | *.png | *.gif | *.bmp | *.svg | *.webp | *.ico | *.tiff | *.tif)
+    category="Images"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Videos
+  *.avi | *.mkv | *.mov | *.wmv | *.flv | *.webm | *.m4v | *.mpg | *.mpeg | *.mp4)
+    category="Videos"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Audio
+  *.mp3 | *.wav | *.flac | *.aac | *.ogg | *.m4a | *.wma | *.opus)
+    category="Audio"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Archives
+  *.zip | *.rar | *.tar | *.gz | *.7z | *.bz2 | *.xz | *.tgz)
+    category="Archives"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Code
+  *.py | *.java | *.cpp | *.c | *.h | *.js | *.ts | *.html | *.css | *.php | *.rb | *.go | *.rs | *.swift)
+    category="Code"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Executables
+  *.exe | *.app | *.deb | *.rpm | *.apk | *.dmg | *.msi)
+    category="Executables"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+
+  # Default
+  *)
+    category="Other"
+    echo "these are $category"
+    ensure_dir_and_move category extension
+    ;;
+  esac
 done
