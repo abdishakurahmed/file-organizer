@@ -3,20 +3,47 @@
 set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
+dir_to_operate_on=""
+
+while getopts :vd: opt; do
+  case "$opt" in
+  d)
+    # if user specifies directory, then operate on that dir
+    if [[ -d "$OPTARG" ]]; then
+      dir_to_operate_on="$OPTARG"
+    else
+      echo "invalid directory"
+      exit 10
+    fi
+    ;;
+    # this feature will be added soon when ready, but it is not now
+    # v)
+    #   echo "this user needs verbose mode, give it"
+    #   ;;
+  :)
+    echo "argument is needed for option -$OPTARG."
+    exit 1
+    ;;
+  *)
+    exit 1
+    ;;
+  esac
+done
+
 ensure_dir_and_move() {
   declare -n dir=$1
   declare -n itemTobeMoved=$2
-  if [[ -d $dir ]]; then
-    mv "$itemTobeMoved" "$dir"
+  if [[ -d $dir_to_operate_on/$dir ]]; then
+    mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
   else
-    mkdir "$dir"
-    mv "$itemTobeMoved" "$dir"
+    mkdir "$dir_to_operate_on/$dir"
+    mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
   fi
 }
 
 organize_files_by_type() {
 
-  for extension in *; do
+  for extension in "$dir_to_operate_on"/*; do
     if [[ -d $extension ]]; then
       continue
     fi
@@ -25,68 +52,60 @@ organize_files_by_type() {
     *.pdf | *.doc | *.docx | *.txt | *.rtf | *.odt | *.md)
       local category="Documents"
       ensure_dir_and_move category extension
-      echo "these are $category"
 
       ;;
     *.xls | *.xlsx | *.csv | *.ods)
       local category="Spreadsheets"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
     *.ppt | *.pptx | *.odp)
       local category="Presentations"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Images
     *.jpg | *.jpeg | *.png | *.gif | *.bmp | *.svg | *.webp | *.ico | *.tiff | *.tif)
       local category="Images"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Videos
     *.avi | *.mkv | *.mov | *.wmv | *.flv | *.webm | *.m4v | *.mpg | *.mpeg | *.mp4)
       local category="Videos"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Audio
     *.mp3 | *.wav | *.flac | *.aac | *.ogg | *.m4a | *.wma | *.opus)
       local category="Audio"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Archives
     *.zip | *.rar | *.tar | *.gz | *.7z | *.bz2 | *.xz | *.tgz)
       local category="Archives"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Code
     *.py | *.java | *.cpp | *.c | *.h | *.js | *.ts | *.html | *.css | *.php | *.rb | *.go | *.rs | *.swift)
       local category="Code"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Executables
     *.exe | *.app | *.deb | *.rpm | *.apk | *.dmg | *.msi)
       local category="Executables"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
 
     # Default
     *)
       local category="Other"
-      echo "these are $category"
       ensure_dir_and_move category extension
       ;;
     esac
   done
 }
+
+organize_files_by_type
