@@ -3,7 +3,11 @@
 set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
+# this variable is used to determine the directory to operate on
+# if user specifies one it will be that or the current one
 dir_to_operate_on=""
+# this is used to determine whether the user asked for verbose mode with -v option
+verboseMode=false
 
 while getopts :vd: opt; do
   case "$opt" in
@@ -16,10 +20,9 @@ while getopts :vd: opt; do
       exit 10
     fi
     ;;
-    # this feature will be added soon when ready, but it is not now
-    # v)
-    #   echo "this user needs verbose mode, give it"
-    #   ;;
+  v)
+    verboseMode=true
+    ;;
   :)
     echo "argument is needed for option -$OPTARG."
     exit 1
@@ -33,11 +36,24 @@ done
 ensure_dir_and_move() {
   declare -n dir=$1
   declare -n itemTobeMoved=$2
-  if [[ -d $dir_to_operate_on/$dir ]]; then
-    mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+  if [[ $verboseMode == false ]]; then
+    if [[ -d $dir_to_operate_on/$dir ]]; then
+      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+    else
+      mkdir "$dir_to_operate_on/$dir"
+      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+    fi
   else
-    mkdir "$dir_to_operate_on/$dir"
-    mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+    # the user asked for verbose mode
+    if [[ -d $dir_to_operate_on/$dir ]]; then
+      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+      echo "move $itemTobeMoved" "->" "$dir_to_operate_on/$dir"
+    else
+      mkdir "$dir_to_operate_on/$dir"
+      echo "mkdir: created directory $dir_to_operate_on/$dir"
+      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+      echo "move $itemTobeMoved" "->" "$dir_to_operate_on/$dir"
+    fi
   fi
 }
 
