@@ -5,15 +5,18 @@ trap 'echo "Error on line $LINENO"' ERR
 
 # this variable is used to determine the directory to operate on
 # if user specifies one it will be that or the current one
-dir_to_operate_on=""
+dir_to_operate_on="./"
 # this is used to determine whether the user asked for verbose mode with -v option
+dotDir="."
 verboseMode=false
 
 while getopts :vd: opt; do
   case "$opt" in
   d)
     # if user specifies directory, then operate on that dir
-    if [[ -d "$OPTARG" ]]; then
+    if [[ -d "$OPTARG" || $OPTARG == "$dotDir" ]]; then
+      dir_to_operate_on="./"
+    elif [[ -d "$OPTARG" ]]; then
       dir_to_operate_on="$OPTARG"
     else
       echo "invalid directory"
@@ -44,22 +47,22 @@ ensure_dir_and_move() {
       mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
     fi
   else
-    # the user asked for verbose mode
+    # user asked for verbose mode
     if [[ -d $dir_to_operate_on/$dir ]]; then
       mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
-      echo "move $itemTobeMoved" "->" "$dir_to_operate_on/$dir"
+      echo "move $itemTobeMoved" "->" "$dir_to_operate_on$dir"
     else
       mkdir "$dir_to_operate_on/$dir"
-      echo "mkdir: created directory $dir_to_operate_on/$dir"
+      echo "mkdir: created directory $dir_to_operate_on$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
-      echo "move $itemTobeMoved" "->" "$dir_to_operate_on/$dir"
+      echo "move $itemTobeMoved" "->" "$dir_to_operate_on$dir"
     fi
   fi
 }
 
 organize_files_by_type() {
 
-  for extension in "$dir_to_operate_on"/*; do
+  for extension in "$dir_to_operate_on"*; do
     if [[ -d $extension ]]; then
       continue
     fi
