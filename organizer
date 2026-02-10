@@ -6,18 +6,25 @@ trap 'echo "Error on line $LINENO"' ERR
 # this variable is used to determine the directory to operate on
 # if user specifies one it will be that or the current one
 dir_to_operate_on="./"
+dot_dir="."
 # this is used to determine whether the user asked for verbose mode with -v option
-dotDir="."
 verboseMode=false
 
 while getopts :vd: opt; do
   case "$opt" in
   d)
     # if user specifies directory, then operate on that dir
-    if [[ -d "$OPTARG" || $OPTARG == "$dotDir" ]]; then
-      dir_to_operate_on="./"
+    if [[ -d "$OPTARG" && $OPTARG == "$dot_dir" ]]; then
+      dir_to_operate_on="$OPTARG"
     elif [[ -d "$OPTARG" ]]; then
       dir_to_operate_on="$OPTARG"
+      if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
+        dir_to_operate_on="$OPTARG"
+      else
+        #  echo "no ther is no slash"
+        dir_to_operate_on="$OPTARG"
+        dir_to_operate_on+="/"
+      fi
     else
       echo "invalid directory"
       exit 10
@@ -40,21 +47,21 @@ ensure_dir_and_move() {
   declare -n dir=$1
   declare -n itemTobeMoved=$2
   if [[ $verboseMode == false ]]; then
-    if [[ -d $dir_to_operate_on/$dir ]]; then
-      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+    if [[ -d $dir_to_operate_on$dir ]]; then
+      mv "$itemTobeMoved" "$dir_to_operate_on$dir"
     else
-      mkdir "$dir_to_operate_on/$dir"
-      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+      mkdir "$dir_to_operate_on$dir"
+      mv "$itemTobeMoved" "$dir_to_operate_on$dir"
     fi
   else
     # user asked for verbose mode
-    if [[ -d $dir_to_operate_on/$dir ]]; then
-      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+    if [[ -d $dir_to_operate_on$dir ]]; then
+      mv "$itemTobeMoved" "$dir_to_operate_on$dir"
       echo "move $itemTobeMoved" "->" "$dir_to_operate_on$dir"
     else
-      mkdir "$dir_to_operate_on/$dir"
+      mkdir "$dir_to_operate_on$dir"
       echo "mkdir: created directory $dir_to_operate_on$dir"
-      mv "$itemTobeMoved" "$dir_to_operate_on/$dir"
+      mv "$itemTobeMoved" "$dir_to_operate_on$dir"
       echo "move $itemTobeMoved" "->" "$dir_to_operate_on$dir"
     fi
   fi
