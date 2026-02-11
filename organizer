@@ -9,8 +9,10 @@ dir_to_operate_on="./"
 dot_dir="."
 # this is used to determine whether the user asked for verbose mode with -v option
 verboseMode=false
+# this is used to determine if user specified dry_run option or not
+dry_run=false
 
-while getopts :vd: opt; do
+while getopts :nvd: opt; do
   case "$opt" in
   d)
     # if user specifies directory, then operate on that dir
@@ -30,6 +32,9 @@ while getopts :vd: opt; do
       exit 10
     fi
     ;;
+  n)
+    dry_run=true
+    ;;
   v)
     verboseMode=true
     ;;
@@ -46,6 +51,16 @@ done
 ensure_dir_and_move() {
   declare -n dir=$1
   declare -n itemTobeMoved=$2
+  if [[ "$dry_run" == true ]]; then
+    if [[ -d $dir_to_operate_on$dir ]]; then
+      echo " would move $itemTobeMoved" "-> $dir_to_operate_on$dir"
+    else
+      #echo "would  create directory $dir_to_operate_on$dir"
+      echo " would move $itemTobeMoved" "-> $dir_to_operate_on$dir"
+    fi
+    return
+  fi
+
   if [[ $verboseMode == false ]]; then
     if [[ -d $dir_to_operate_on$dir ]]; then
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
