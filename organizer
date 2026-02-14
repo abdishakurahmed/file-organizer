@@ -17,7 +17,7 @@ while getopts :nvd: opt; do
   d)
     # if user specifies directory, then operate on that dir
     if [[ -d "$OPTARG" && $OPTARG == "$dot_dir" ]]; then
-      dir_to_operate_on="$OPTARG"
+      dir_to_operate_on="./"
     elif [[ -d "$OPTARG" ]]; then
       dir_to_operate_on="$OPTARG"
       if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
@@ -135,7 +135,7 @@ organize_files_by_type() {
       ;;
 
     # Executables
-    *.exe | *.app | *.deb | *.rpm | *.apk | *.dmg | *.msi)
+    *.exe | *.app | *.deb | *.rpm | *.apk | *.dmg | *.msi | *.sh)
       local category="Executables"
       ensure_dir_and_move category extension
       ;;
