@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-trap 'echo "Error on line $LINENO"' ERR
+trap 'printf "%s\n" "Error on line $LINENO"' ERR
 
 # this variable is used to determine the directory to operate on
 # if user specifies one it will be that or the current one
 dir_to_operate_on="./"
 dot_dir="."
 # this is used to determine whether the user asked for verbose mode with -v option
-verboseMode=false
+verbose_mode=false
 # this is used to determine if user specified dry_run option or not
 dry_run=false
 
@@ -23,12 +23,11 @@ while getopts :nvd: opt; do
       if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
         dir_to_operate_on="$OPTARG"
       else
-        #  echo "no ther is no slash"
         dir_to_operate_on="$OPTARG"
         dir_to_operate_on+="/"
       fi
     else
-      echo "invalid directory"
+      printf "%s\n" "invalid directory"
       exit 10
     fi
     ;;
@@ -36,10 +35,10 @@ while getopts :nvd: opt; do
     dry_run=true
     ;;
   v)
-    verboseMode=true
+    verbose_mode=true
     ;;
   :)
-    echo "argument is needed for option -$OPTARG."
+    printf "%s\n" "argument is needed for option -$OPTARG."
     exit 1
     ;;
   *)
@@ -53,15 +52,17 @@ ensure_dir_and_move() {
   declare -n itemTobeMoved=$2
   if [[ "$dry_run" == true ]]; then
     if [[ -d $dir_to_operate_on$dir ]]; then
-      echo " would move $itemTobeMoved" "-> $dir_to_operate_on$dir"
+      printf "%s\n" "[DRY-RUN] would move $itemTobeMoved -> $dir_to_operate_on$dir"
     else
       #echo "would  create directory $dir_to_operate_on$dir"
-      echo " would move $itemTobeMoved" "-> $dir_to_operate_on$dir"
+      printf "%s\n" "[DRY-RUN] would move $itemTobeMoved -> $dir_to_operate_on$dir"
     fi
+    # printf "%s\n" "To actually perform these operations, run without -n flag:"
     return
   fi
 
-  if [[ $verboseMode == false ]]; then
+  # silent mode without -v or -n
+  if [[ $verbose_mode == false ]]; then
     if [[ -d $dir_to_operate_on$dir ]]; then
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
     else
@@ -69,15 +70,16 @@ ensure_dir_and_move() {
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
     fi
   else
-    # user asked for verbose mode
+
+    # verbose mode
     if [[ -d $dir_to_operate_on$dir ]]; then
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
-      echo "move $itemTobeMoved" "->" "$dir_to_operate_on$dir"
+      printf "%s\n" "moved $itemTobeMoved -> $dir_to_operate_on$dir"
     else
       mkdir "$dir_to_operate_on$dir"
-      echo "mkdir: created directory $dir_to_operate_on$dir"
+      printf "%s\n" "created directory $dir_to_operate_on$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
-      echo "move $itemTobeMoved" "->" "$dir_to_operate_on$dir"
+      printf "%s\n" "moved $itemTobeMoved -> $dir_to_operate_on$dir"
     fi
   fi
 }
