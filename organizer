@@ -2,9 +2,11 @@
 
 set -euo pipefail
 trap 'printf "%s\n" "Error on line $LINENO"' ERR
-
 # this variable is used to determine the directory to operate on
 # if user specifies one it will be that or the current one
+DIRECTORIES_CREATED=1
+FILES_MOVED=1
+declare -a TEMP_DIRECTORIES
 dir_to_operate_on="./"
 dot_dir="."
 # this is used to determine whether the user asked for verbose mode with -v option
@@ -51,21 +53,28 @@ ensure_dir_and_move() {
   declare -n dir=$1
   declare -n itemTobeMoved=$2
   if [[ "$dry_run" == true ]]; then
-    if [[ -d $dir_to_operate_on$dir ]]; then
-      printf "%s\n" "[DRY-RUN] would move $itemTobeMoved -> $dir_to_operate_on$dir"
+    ((FILES_MOVED++))
+    if [[ -d "$dir_to_operate_on$dir" ]]; then
+      printf "%s\n" "[DRY-RUN] would move ${itemTobeMoved#./} -> ${dir_to_operate_on#./}$dir/"
     else
-      #echo "would  create directory $dir_to_operate_on$dir"
-      printf "%s\n" "[DRY-RUN] would move $itemTobeMoved -> $dir_to_operate_on$dir"
+      ((DIRECTORIES_CREATED++))
+      mkdir "$dir_to_operate_on$dir"
+      #this is for tempory, after dry_run, they will be deletd
+      TEMP_DIRECTORIES+=("$dir_to_operate_on$dir")
+      printf "%s\n" "[DRY-RUN] would  create directory ${dir_to_operate_on#./}$dir/"
+      printf "%s\n" "[DRY-RUN] would move ${itemTobeMoved#./} -> ${dir_to_operate_on#./}$dir/"
     fi
-    # printf "%s\n" "To actually perform these operations, run without -n flag:"
     return
   fi
 
   # silent mode without -v or -n
   if [[ $verbose_mode == false ]]; then
     if [[ -d $dir_to_operate_on$dir ]]; then
-      mv "$itemTobeMoved" "$dir_to_operate_on$dir"
+      ((FILES_MOVED++))
+      mv "$itemTobeMoved" "${dir_to_operate_on#./}$dir"
     else
+      ((FILES_MOVED++))
+      ((DIRECTORIES_CREATED++))
       mkdir "$dir_to_operate_on$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
     fi
@@ -73,9 +82,12 @@ ensure_dir_and_move() {
 
     # verbose mode
     if [[ -d $dir_to_operate_on$dir ]]; then
+      ((FILES_MOVED++))
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
       printf "%s\n" "moved $itemTobeMoved -> $dir_to_operate_on$dir"
     else
+      ((FILES_MOVED++))
+      ((DIRECTORIES_CREATED++))
       mkdir "$dir_to_operate_on$dir"
       printf "%s\n" "created directory $dir_to_operate_on$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
@@ -152,3 +164,43 @@ organize_files_by_type() {
 }
 
 organize_files_by_type
+
+# this is a little summary header that will have a long ---- and summary quote and then ----
+header() {
+  printf "\n%s %s %s\n" "$(printf '─%.0s' {1..25})" \
+    "$1" \
+    "$(printf '─%.0s' {1..25})"
+}
+
+message_summary() {
+  # this will be the summary message when users are actaully moving files either -v or not
+  if [[ "$dry_run" == false ]]; then
+    printf "\n"
+    header "ORGANIZATION COMPLETE"
+    printf "\n"
+    printf " %s\n" "Files moved: $((FILES_MOVED - 1))"
+    printf " %s\n" "Directories created: $((DIRECTORIES_CREATED - 1))"
+    printf "\n"
+  else
+    # this will be the summary message when user runs the dry run mode
+    printf "\n"
+    header "DRY-RUN SUMMARY"
+    printf "\n"
+    printf " %s\n" "$((FILES_MOVED - 1)) file(s) would be moved: "
+    printf " %s\n" "$((DIRECTORIES_CREATED - 1)) directory(ies) would be created: "
+    printf " %s\n" "To actually perform these operations, run without -n flag:"
+  fi
+}
+message_summary
+
+# this for loop is for dry-run only, it will delete directories that will be created
+# before that is stored in TEMP_DIRECTORIES, since it is dry run only.
+# i dont have any solution that is better than this for now since i need to count how
+# many directories that would be created if run in normal mode without dry_run
+for i in "${TEMP_DIRECTORIES[@]}"; do
+  if [[ "$dir_to_operate_on" == ./ ]]; then
+    rm --recursive "$i"
+  else
+    rm --recursive "$i"
+  fi
+done
