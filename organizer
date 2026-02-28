@@ -4,6 +4,28 @@ set -euo pipefail
 trap 'printf "%s\n" "Error on line $LINENO"' ERR
 # this variable is used to determine the directory to operate on
 # if user specifies one it will be that or the current one
+# Only use colors if outputting to terminal
+if [[ -t 1 ]]; then
+  R_BG='\033[41m'
+  Y_BG='\033[43m'
+  GREEN='\033[32m'
+  BLUE='\033[34m'
+  BLACK='\033[30m'
+  BOLD='\033[1m'
+  DIM='\033[2m'
+  WHITE="\033[38m"
+  RESET='\033[0m'
+else
+  R_BG=''
+  Y_BG=''
+  GREEN=''
+  BLUE=''
+  BOLD=''
+  DIM=''
+  WHITE=''
+  RESET=''
+fi
+
 DIRECTORIES_CREATED=1
 FILES_MOVED=1
 declare -a TEMP_DIRECTORIES
@@ -29,7 +51,7 @@ while getopts :nvd: opt; do
         dir_to_operate_on+="/"
       fi
     else
-      printf "%s\n" "invalid directory"
+      printf "${BOLD}${WHITE}${R_BG}%s${RESET}\n" "✖invalid directory"
       exit 10
     fi
     ;;
@@ -40,7 +62,7 @@ while getopts :nvd: opt; do
     verbose_mode=true
     ;;
   :)
-    printf "%s\n" "argument is needed for option -$OPTARG."
+    printf "${BOLD}${BLACK}${Y_BG}%s %s${RESET}\n" "argument is needed for option" "-$OPTARG"
     exit 1
     ;;
   *)
@@ -55,14 +77,14 @@ ensure_dir_and_move() {
   if [[ "$dry_run" == true ]]; then
     ((FILES_MOVED++))
     if [[ -d "$dir_to_operate_on$dir" ]]; then
-      printf "%s\n" "[DRY-RUN] would move ${itemTobeMoved#./} -> ${dir_to_operate_on#./}$dir/"
+      printf "${BLUE}${DIM}[DRY-RUN]${RESET} would move %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
     else
       ((DIRECTORIES_CREATED++))
       mkdir "$dir_to_operate_on$dir"
       #this is for tempory, after dry_run, they will be deletd
       TEMP_DIRECTORIES+=("$dir_to_operate_on$dir")
-      printf "%s\n" "[DRY-RUN] would  create directory ${dir_to_operate_on#./}$dir/"
-      printf "%s\n" "[DRY-RUN] would move ${itemTobeMoved#./} -> ${dir_to_operate_on#./}$dir/"
+      printf "${BLUE}${DIM}[DRY-RUN]${RESET} would  create directory %s/\n" "${dir_to_operate_on#./}$dir"
+      printf "${BLUE}${DIM}[DRY-RUN]${RESET} would move %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
     fi
     return
   fi
@@ -84,14 +106,14 @@ ensure_dir_and_move() {
     if [[ -d $dir_to_operate_on$dir ]]; then
       ((FILES_MOVED++))
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
-      printf "%s\n" "moved $itemTobeMoved -> $dir_to_operate_on$dir"
+      printf "${GREEN}[✓]${RESET} ${WHITE}${BOLD}moved:${RESET} %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
     else
       ((FILES_MOVED++))
       ((DIRECTORIES_CREATED++))
       mkdir "$dir_to_operate_on$dir"
-      printf "%s\n" "created directory $dir_to_operate_on$dir"
+      printf "${GREEN}[✓]${RESET} ${WHITE}${BOLD}created directory:${RESET} %s/\n" "${dir_to_operate_on#./}$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
-      printf "%s\n" "moved $itemTobeMoved -> $dir_to_operate_on$dir"
+      printf "${GREEN}[✓]${RESET} ${WHITE}${BOLD}moved:${RESET} %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
     fi
   fi
 }
@@ -167,8 +189,9 @@ organize_files_by_type
 
 # this is a little summary header that will have a long ---- and summary quote and then ----
 header() {
-  printf "\n%s %s %s\n" "$(printf '─%.0s' {1..25})" \
-    "$1" \
+  printf "\n%s %b %s\n" \
+    "$(printf '─%.0s' {1..25})" \
+    "${BOLD}${BLACK}${Y_BG}${1}${RESET}" \
     "$(printf '─%.0s' {1..25})"
 }
 
@@ -178,17 +201,17 @@ message_summary() {
     printf "\n"
     header "ORGANIZATION COMPLETE"
     printf "\n"
-    printf " %s\n" "Files moved: $((FILES_MOVED - 1))"
-    printf " %s\n" "Directories created: $((DIRECTORIES_CREATED - 1))"
-    printf "\n"
+    printf " ${GREEN}${BOLD}$((FILES_MOVED - 1))${RESET} %s\n" "Files moved"
+    printf " ${BLUE}${BOLD}$((DIRECTORIES_CREATED - 1))${RESET} %s\n" "Directories created"
   else
     # this will be the summary message when user runs the dry run mode
     printf "\n"
     header "DRY-RUN SUMMARY"
     printf "\n"
-    printf " %s\n" "$((FILES_MOVED - 1)) file(s) would be moved: "
-    printf " %s\n" "$((DIRECTORIES_CREATED - 1)) directory(ies) would be created: "
+    printf " ${GREEN}${BOLD}$((FILES_MOVED - 1))${RESET} %s\n" "file(s) would be moved"
+    printf " ${BLUE}${BOLD}$((DIRECTORIES_CREATED - 1))${RESET} %s\n" "directory(ies) would be created"
     printf " %s\n" "To actually perform these operations, run without -n flag:"
+    printf " %s\n" "organizer -v -d ${dir_to_operate_on}"
   fi
 }
 message_summary
