@@ -2,8 +2,7 @@
 
 set -euo pipefail
 trap 'printf "%s\n" "Error on line $LINENO"' ERR
-# this variable is used to determine the directory to operate on
-# if user specifies one it will be that or the current one
+
 # Only use colors if outputting to terminal
 if [[ -t 1 ]]; then
   R_BG='\033[41m'
@@ -30,7 +29,6 @@ DIRECTORIES_CREATED=1
 FILES_MOVED=1
 declare -a TEMP_DIRECTORIES
 dir_to_operate_on="./"
-dot_dir="."
 # this is used to determine whether the user asked for verbose mode with -v option
 verbose_mode=false
 # this is used to determine if user specified dry_run option or not
@@ -39,20 +37,33 @@ dry_run=false
 while getopts :nvd: opt; do
   case "$opt" in
   d)
-    # if user specifies directory, then operate on that dir
-    if [[ -d "$OPTARG" && $OPTARG == "$dot_dir" ]]; then
-      dir_to_operate_on="./"
-    elif [[ -d "$OPTARG" ]]; then
+    #check if it is absolute path and real directory
+    if [[ "$OPTARG" == /home/* && -d "$OPTARG" ]]; then
       dir_to_operate_on="$OPTARG"
+      #also check if there is a trailing slash at the end or should be added
       if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
         dir_to_operate_on="$OPTARG"
       else
         dir_to_operate_on="$OPTARG"
         dir_to_operate_on+="/"
       fi
+      #check if directory specified is relative and append pwd to it if it is
+    elif [[ "$OPTARG" != /home/* ]]; then
+      if [[ -d "$OPTARG" && $OPTARG == "." ]]; then
+        dir_to_operate_on="./"
+      elif [[ -d $PWD/"$OPTARG" ]]; then
+        dir_to_operate_on="$OPTARG"
+        if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
+          dir_to_operate_on=$PWD/"$OPTARG"
+        else
+          dir_to_operate_on=$PWD/"$OPTARG"
+          dir_to_operate_on+="/"
+        fi
+      fi
     else
+      #if it is invalid directory, then throw an error
       printf "${BOLD}${WHITE}${R_BG}%s${RESET}\n" "✖invalid directory"
-      exit 10
+      exit 1
     fi
     ;;
   n)
@@ -62,6 +73,7 @@ while getopts :nvd: opt; do
     verbose_mode=true
     ;;
   :)
+    #this is when the option needs an argument like -d option
     printf "${BOLD}${BLACK}${Y_BG}%s %s${RESET}\n" "argument is needed for option" "-$OPTARG"
     exit 1
     ;;
@@ -74,6 +86,7 @@ done
 ensure_dir_and_move() {
   declare -n dir=$1
   declare -n itemTobeMoved=$2
+  #this first if is for dry_run mode using -n option
   if [[ "$dry_run" == true ]]; then
     ((FILES_MOVED++))
     if [[ -d "$dir_to_operate_on$dir" ]]; then
@@ -125,7 +138,7 @@ organize_files_by_type() {
       continue
     fi
     case "${extension}" in
-    # Documents
+
     *.pdf | *.doc | *.docx | *.txt | *.rtf | *.odt | *.md)
       local category="Documents"
       ensure_dir_and_move category extension
@@ -140,43 +153,36 @@ organize_files_by_type() {
       ensure_dir_and_move category extension
       ;;
 
-    # Images
     *.jpg | *.jpeg | *.png | *.gif | *.bmp | *.svg | *.webp | *.ico | *.tiff | *.tif)
       local category="Images"
       ensure_dir_and_move category extension
       ;;
 
-    # Videos
     *.avi | *.mkv | *.mov | *.wmv | *.flv | *.webm | *.m4v | *.mpg | *.mpeg | *.mp4)
       local category="Videos"
       ensure_dir_and_move category extension
       ;;
 
-    # Audio
     *.mp3 | *.wav | *.flac | *.aac | *.ogg | *.m4a | *.wma | *.opus)
       local category="Audio"
       ensure_dir_and_move category extension
       ;;
 
-    # Archives
     *.zip | *.rar | *.tar | *.gz | *.7z | *.bz2 | *.xz | *.tgz)
       local category="Archives"
       ensure_dir_and_move category extension
       ;;
 
-    # Code
     *.py | *.java | *.cpp | *.c | *.h | *.js | *.ts | *.html | *.css | *.php | *.rb | *.go | *.rs | *.swift)
       local category="Code"
       ensure_dir_and_move category extension
       ;;
 
-    # Executables
     *.exe | *.app | *.deb | *.rpm | *.apk | *.dmg | *.msi | *.sh)
       local category="Executables"
       ensure_dir_and_move category extension
       ;;
 
-    # Default
     *)
       local category="Other"
       ensure_dir_and_move category extension
@@ -216,8 +222,8 @@ message_summary() {
 }
 message_summary
 
-# this for loop is for dry-run only, it will delete directories that will be created
-# before that is stored in TEMP_DIRECTORIES, since it is dry run only.
+# this for loop is for dry-run only, it will delete directories that has been created
+#  those directories is stored in TEMP_DIRECTORIES array, since it is dry run only.
 # i dont have any solution that is better than this for now since i need to count how
 # many directories that would be created if run in normal mode without dry_run
 for i in "${TEMP_DIRECTORIES[@]}"; do

@@ -11,8 +11,7 @@ the first version of the app will have the following features to get it started.
 
 ## specify a directory
 
-you can specify a directory with -d option. if you dont specify, it will be taking that the operation be done in the directory you're in. you can't specify a -d option without adding the directory you want the program to operate on, also you can't specify an invalid directory. also the program doesn't support relative path, only absolute path for now, in the future, i will add it.
-
+you can specify a directory with -d option. if you dont specify, it will be taking that the operation be done in the directory you're in. you can't specify a -d option without adding the directory you want the program to operate on, also you can't specify an invalid directory. also the program does support relative path, which means you can specify in which ever way is convenient for you. also you can specify '.' to the -d option and it will mean current working directory.
 ```bash
 organizer [-dv] [-n]
 ```
@@ -26,3 +25,4 @@ flags & features the program has right now:
 - [ x ]`-v` → verbose mode
 - [ x ]`-n` → dry-run (show what would happen)
 - [ x ]Create folders if they don’t exist
+- [ x ] Absolute and Relative paths
