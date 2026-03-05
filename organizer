@@ -3,6 +3,11 @@
 set -euo pipefail
 trap 'printf "%s\n" "Error on line $LINENO"' ERR
 
+#this opens file descriptor 3 for writing to logs, normal logs
+exec 3>>~/.organizer.log
+#this opens file descriptor 4 for writing to logs, error logs
+exec 4>>~/.organizer.errors.log
+
 # Only use colors if outputting to terminal
 if [[ -t 1 ]]; then
   R_BG='\033[41m'
@@ -49,9 +54,7 @@ while getopts :nvd: opt; do
       fi
       #check if directory specified is relative and append pwd to it if it is
     elif [[ "$OPTARG" != /home/* ]]; then
-      if [[ -d "$OPTARG" && $OPTARG == "." ]]; then
-        dir_to_operate_on="./"
-      elif [[ -d $PWD/"$OPTARG" ]]; then
+      if [[ -d $PWD/"$OPTARG" ]]; then
         dir_to_operate_on="$OPTARG"
         if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
           dir_to_operate_on=$PWD/"$OPTARG"
@@ -59,10 +62,20 @@ while getopts :nvd: opt; do
           dir_to_operate_on=$PWD/"$OPTARG"
           dir_to_operate_on+="/"
         fi
+      else
+
+        #if it is invalid directory, then throw an error to the stderr
+        printf "${BOLD}${BLACK}${R_BG}%s${RESET}\n" "✖invalid directory"
+        # this redirects those logs to the error logs file descriptor
+        printf "[$(date +%F-%T)] %s\n" "✖invalid directory" >&4
+        exit 1
       fi
     else
-      #if it is invalid directory, then throw an error
-      printf "${BOLD}${WHITE}${R_BG}%s${RESET}\n" "✖invalid directory"
+
+      #if it is invalid directory, then throw an error to the stderr
+      printf "${BOLD}${BLACK}${R_BG}%s${RESET}\n" "✖invalid directory"
+      # this redirects those logs to the error logs file descriptor
+      printf "[$(date +%F-%T)] %s\n" "✖invalid directory" >&4
       exit 1
     fi
     ;;
@@ -75,6 +88,7 @@ while getopts :nvd: opt; do
   :)
     #this is when the option needs an argument like -d option
     printf "${BOLD}${BLACK}${Y_BG}%s %s${RESET}\n" "argument is needed for option" "-$OPTARG"
+    printf "[$(date +%F-%T)] %s %s\n" "argument is needed for option" "-$OPTARG" >&4
     exit 1
     ;;
   *)
@@ -94,7 +108,7 @@ ensure_dir_and_move() {
     else
       ((DIRECTORIES_CREATED++))
       mkdir "$dir_to_operate_on$dir"
-      #this is for tempory, after dry_run, they will be deletd
+      #this is for stores temporary directories, after dry_run, they will be deletd
       TEMP_DIRECTORIES+=("$dir_to_operate_on$dir")
       printf "${BLUE}${DIM}[DRY-RUN]${RESET} would  create directory %s/\n" "${dir_to_operate_on#./}$dir"
       printf "${BLUE}${DIM}[DRY-RUN]${RESET} would move %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
@@ -107,11 +121,14 @@ ensure_dir_and_move() {
     if [[ -d $dir_to_operate_on$dir ]]; then
       ((FILES_MOVED++))
       mv "$itemTobeMoved" "${dir_to_operate_on#./}$dir"
+      printf "[$(date +%F-%T)] [✓] moved: %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir" >&3
     else
       ((FILES_MOVED++))
       ((DIRECTORIES_CREATED++))
       mkdir "$dir_to_operate_on$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
+      printf "[$(date +%F-%T)] [✓] created directory: %s/\n" "${dir_to_operate_on#./}$dir" >&3
+      printf "[$(date +%F-%T)] [✓] moved: %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir" >&3
     fi
   else
 
@@ -120,6 +137,7 @@ ensure_dir_and_move() {
       ((FILES_MOVED++))
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
       printf "${GREEN}[✓]${RESET} ${WHITE}${BOLD}moved:${RESET} %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
+      printf "[$(date +%F-%T)] [✓] moved: %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir" >&3
     else
       ((FILES_MOVED++))
       ((DIRECTORIES_CREATED++))
@@ -127,6 +145,9 @@ ensure_dir_and_move() {
       printf "${GREEN}[✓]${RESET} ${WHITE}${BOLD}created directory:${RESET} %s/\n" "${dir_to_operate_on#./}$dir"
       mv "$itemTobeMoved" "$dir_to_operate_on$dir"
       printf "${GREEN}[✓]${RESET} ${WHITE}${BOLD}moved:${RESET} %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir"
+      # these don't output to the screen, they instead redirect to logs file
+      printf "[$(date +%F-%T)] [✓] created directory: %s/\n" "${dir_to_operate_on#./}$dir" >&3
+      printf "[$(date +%F-%T)] [✓] moved: %s -> %s/\n" "${itemTobeMoved#./}" "${dir_to_operate_on#./}$dir" >&3
     fi
   fi
 }
@@ -209,6 +230,10 @@ message_summary() {
     printf "\n"
     printf " ${GREEN}${BOLD}$((FILES_MOVED - 1))${RESET} %s\n" "Files moved"
     printf " ${BLUE}${BOLD}$((DIRECTORIES_CREATED - 1))${RESET} %s\n" "Directories created"
+    # these redirect to the logs file, not the stdout
+    printf " [$(date +%F-%T)] $((FILES_MOVED - 1)) %s\n" "Files moved" >&3
+    printf " [$(date +%F-%T)] $((DIRECTORIES_CREATED - 1)) %s\n" "Directories created" >&3
+    printf "\n"
   else
     # this will be the summary message when user runs the dry run mode
     printf "\n"
@@ -233,3 +258,6 @@ for i in "${TEMP_DIRECTORIES[@]}"; do
     rm --recursive "$i"
   fi
 done
+
+exec 3>&-
+exec 4>&-
