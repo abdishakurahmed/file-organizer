@@ -39,36 +39,27 @@ verbose_mode=false
 # this is used to determine if user specified dry_run option or not
 dry_run=false
 
-while getopts :nvd: opt; do
-  case "$opt" in
-  d)
-    #check if it is absolute path and real directory
-    if [[ "$OPTARG" == /home/* && -d "$OPTARG" ]]; then
+check_directory_in_option_d() {
+  local OPTARG=$1
+  #check if it is absolute path and real directory
+  if [[ "$OPTARG" == /home/* && -d "$OPTARG" ]]; then
+    dir_to_operate_on="$OPTARG"
+    #also check if there is a trailing slash at the end or should be added
+    if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
       dir_to_operate_on="$OPTARG"
-      #also check if there is a trailing slash at the end or should be added
+    else
+      dir_to_operate_on="$OPTARG"
+      dir_to_operate_on+="/"
+    fi
+    #check if directory specified is relative and append pwd to it if it is
+  elif [[ "$OPTARG" != /home/* ]]; then
+    if [[ -d $PWD/"$OPTARG" ]]; then
+      dir_to_operate_on="$OPTARG"
       if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
-        dir_to_operate_on="$OPTARG"
+        dir_to_operate_on=$PWD/"$OPTARG"
       else
-        dir_to_operate_on="$OPTARG"
+        dir_to_operate_on=$PWD/"$OPTARG"
         dir_to_operate_on+="/"
-      fi
-      #check if directory specified is relative and append pwd to it if it is
-    elif [[ "$OPTARG" != /home/* ]]; then
-      if [[ -d $PWD/"$OPTARG" ]]; then
-        dir_to_operate_on="$OPTARG"
-        if [[ "${dir_to_operate_on: -1:1}" == / ]]; then
-          dir_to_operate_on=$PWD/"$OPTARG"
-        else
-          dir_to_operate_on=$PWD/"$OPTARG"
-          dir_to_operate_on+="/"
-        fi
-      else
-
-        #if it is invalid directory, then throw an error to the stderr
-        printf "${BOLD}${BLACK}${R_BG}%s${RESET}\n" "✖invalid directory"
-        # this redirects those logs to the error logs file descriptor
-        printf "[$(date +%F-%T)] %s\n" "✖invalid directory" >&4
-        exit 1
       fi
     else
 
@@ -78,6 +69,20 @@ while getopts :nvd: opt; do
       printf "[$(date +%F-%T)] %s\n" "✖invalid directory" >&4
       exit 1
     fi
+  else
+
+    #if it is invalid directory, then throw an error to the stderr
+    printf "${BOLD}${BLACK}${R_BG}%s${RESET}\n" "✖invalid directory"
+    # this redirects those logs to the error logs file descriptor
+    printf "[$(date +%F-%T)] %s\n" "✖invalid directory" >&4
+    exit 1
+  fi
+}
+
+while getopts :nvd: opt; do
+  case "$opt" in
+  d)
+    check_directory_in_option_d "$OPTARG"
     ;;
   n)
     dry_run=true
@@ -247,17 +252,21 @@ message_summary() {
 }
 message_summary
 
-# this for loop is for dry-run only, it will delete directories that has been created
-#  those directories is stored in TEMP_DIRECTORIES array, since it is dry run only.
-# i dont have any solution that is better than this for now since i need to count how
-# many directories that would be created if run in normal mode without dry_run
-for i in "${TEMP_DIRECTORIES[@]}"; do
-  if [[ "$dir_to_operate_on" == ./ ]]; then
-    rm --recursive "$i"
-  else
-    rm --recursive "$i"
-  fi
-done
+delete_dir_created_in_dry_run() {
+  # this for loop is for dry-run only, it will delete directories that has been created
+  #  those directories is stored in TEMP_DIRECTORIES array, since it is dry run only.
+  # i dont have any solution that is better than this for now since i need to count how
+  # many directories that would be created if run in normal mode without dry_run
+  for i in "${TEMP_DIRECTORIES[@]}"; do
+    if [[ "$dir_to_operate_on" == ./ ]]; then
+      rm --recursive "$i"
+    else
+      rm --recursive "$i"
+    fi
+  done
+}
+
+delete_dir_created_in_dry_run
 
 exec 3>&-
 exec 4>&-
